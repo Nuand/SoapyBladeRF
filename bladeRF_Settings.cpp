@@ -1069,6 +1069,16 @@ SoapySDR::ArgInfoList bladeRF_SoapySDR::getSettingInfo(void) const
 
     if (_isBladeRF1) setArgs.push_back(xb200SettingArg);
 
+    SoapySDR::ArgInfo oversampleArg;
+    oversampleArg.key = "feature";
+    oversampleArg.value = "oversample";
+    oversampleArg.name = "Oversample";
+    oversampleArg.description = "Enable oversampling in FPGA";
+    oversampleArg.type = SoapySDR::ArgInfo::STRING;
+    oversampleArg.options.push_back("oversample");
+    oversampleArg.optionNames.push_back("Enable Oversampling");
+    setArgs.push_back(oversampleArg);
+
     // Sampling mode
     SoapySDR::ArgInfo samplingModeArg;
     samplingModeArg.key = "sampling_mode";
@@ -1234,6 +1244,14 @@ std::string bladeRF_SoapySDR::readSetting(const std::string &key) const
         return "false";
     } else if (key == "biastee_rx") {
         return "false";
+    } else if (key == "oversample") {
+        bladerf_feature feature;
+        int ret = bladerf_get_feature(_dev, &feature);
+        if (ret != 0) {
+            SoapySDR::logf(SOAPY_SDR_ERROR, "bladerf_get_feature(BLADERF_FEATURE_OVERSAMPLE) returned %s", _err2str(ret).c_str());
+            throw std::runtime_error("readSetting() " + _err2str(ret));
+        }
+        return feature == BLADERF_FEATURE_OVERSAMPLE ? "true" : "false";
     }
 
     SoapySDR_logf(SOAPY_SDR_WARNING, "Unknown setting '%s'", key.c_str());
@@ -1551,6 +1569,29 @@ void bladeRF_SoapySDR::writeSetting(const std::string &key, const std::string &v
                 throw std::runtime_error("writeSetting() " + _err2str(ret));
             }
         }
+    }
+    else if (key == "oversample") {
+        bool enable = (value == "true");
+        int ret = bladerf_enable_feature(_dev, BLADERF_FEATURE_OVERSAMPLE, enable);
+        if (ret != 0)
+        {
+            SoapySDR::logf(SOAPY_SDR_ERROR, "bladerf_enable_feature(OVERSAMPLE, %s) returned %s",
+                value.c_str(), _err2str(ret).c_str());
+            throw std::runtime_error("writeSetting() " + _err2str(ret));
+        }
+        SoapySDR::logf(SOAPY_SDR_INFO, "bladerf_enable_feature(OVERSAMPLE, %s)", value.c_str());
+    }
+    else if (key == "feature")
+    {
+        bool enable = (value == "oversample");
+        int ret = bladerf_enable_feature(_dev, BLADERF_FEATURE_OVERSAMPLE, enable);
+        if (ret != 0)
+        {
+            SoapySDR::logf(SOAPY_SDR_ERROR, "bladerf_enable_feature(OVERSAMPLE, %s) returned %s",
+                enable ? "true" : "false", _err2str(ret).c_str());
+            throw std::runtime_error("writeSetting() " + _err2str(ret));
+        }
+        SoapySDR::logf(SOAPY_SDR_INFO, "bladerf_enable_feature(OVERSAMPLE, %s)", enable ? "true" : "false");
     }
     else
     {
